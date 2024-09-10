@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>買取サイト同時検索ツール</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --primary-hover: #357abd;
+            --background: #f0f4f8;
+            --card-background: #ffffff;
+            --text: #333333;
+            --muted: #718096;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .container {
+            background-color: var(--card-background);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: var(--primary);
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+        .search-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .search-link {
+            text-align: center;
+            padding: 10px;
+            background-color: var(--primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: opacity 0.3s;
+        }
+        .search-link:hover {
+            opacity: 0.8;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: var(--primary);
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .copy-button {
+            padding: 5px 10px;
+            font-size: 0.8em;
+        }
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            color: var(--muted);
+        }
+        #copyMessage {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        @media (max-width: 600px) {
+            .search-links {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>買取サイト同時検索ツール</h1>
+    
+    <div class="container">
+        <h2>スマホ以外の商品検索</h2>
+        <input type="text" id="nonSmartphoneInput" placeholder="商品名またはJANを入力">
+        <button onclick="pasteFromClipboard('nonSmartphoneInput')">ペースト</button>
+        <button onclick="search('non-smartphone')">検索</button>
+    </div>
+
+    <div class="container">
+        <h2>スマホの商品検索</h2>
+        <input type="text" id="smartphoneInput" placeholder="商品名を入力">
+        <button onclick="pasteFromClipboard('smartphoneInput')">ペースト</button>
+        <button onclick="search('smartphone')">検索</button>
+    </div>
+
+    <div id="searchLinks" class="search-links"></div>
+
+    <div class="container">
+        <h2>参照 JANリスト</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>商品名</th>
+                    <th>JANコード</th>
+                </tr>
+            </thead>
+            <tbody id="productTable"></tbody>
+        </table>
+    </div>
+
+    <div id="copyMessage">コピーしました</div>
+
+    <footer>
+        <p>不具合がありましたら <a href="https://x.com/du_sedo" target="_blank">https://x.com/du_sedo</a> までお問い合わせください</p>
+        <p>最終更新日時： 2024年9月7日</p>
+        <p>2024年9月7日更新内容：ペーストボタンを追加。コピーボタンを押した後のポップアップが自動で消えるよう調整</p>
+        <p>対象店舗: 買取1丁目、海峡通信、買取ルデヤ、買取Wiki、森森買取</p>
+    </footer>
+
+    <script>
+        const sites = [
+            { name: '買取1丁目', color: '#FF6B6B' },
+            { name: '買取商店', color: '#4ECDC4' },
+            { name: '海峡通信', color: '#45B7D1' },
+            { name: '買取ルデヤ', color: '#FFA07A' },
+            { name: '買取Wiki', color: '#2ecc71' },
+            { name: '森森買取', color: '#9b59b6' }
+        ];
+
+        const products = [
+            { name: 'PlayStation 5', jan: '4948872415934' },
+            { name: 'PlayStation 5 デジタル', jan: '4948872415910' },
+            { name: 'Nintendo Switch (有機ELモデル) [ホワイト]', jan: '4902370548495' },
+            { name: 'Nintendo Switch (有機ELモデル) [ネオン]', jan: '4902370548501' },
+            { name: 'Xbox Series X', jan: '4549576161617' },
+            { name: 'Xbox Series S', jan: '4549576167718' },
+            { name: 'リモートプレーヤー', jan: '4948872017084' },
+            { name: 'It Takes Two', jan: '4938833024404' },
+            { name: 'チェキ専用フィルム 2パック', jan: '4547410377231' },
+            { name: 'チェキ専用フィルム 1パック', jan: '4547410377224' },
+            { name: 'INSTAX mini 12 ブロッサムピンク', jan: '4547410489125' },
+            { name: 'INSTAX mini 40', jan: '4547410449341' },
+            { name: 'INSTAX mini Evo black', jan: '4547410520088' },
+            { name: 'INSTAX mini Evo brown', jan: '4547410520125' },
+            { name: '【PS5ソフト】アストロボット', jan: '4948872017183' },
+            { name: 'コントローラー アストロボット', jan: '4948872416306' },
+            { name: 'SX740 HS シルバー', jan: '4549292119060' },
+            { name: 'SX740 HS ブラック', jan: '4549292119008' },
+            { name: 'Fire TV Stick 4K Max 第2世代', jan: '0840268944841' }
+        ];
+
+        function initializePage() {
+            createSearchLinks();
+            populateProductTable();
+        }
+
+        function createSearchLinks() {
+            const searchLinksDiv = document.getElementById('searchLinks');
+            sites.forEach(site => {
+                const link = document.createElement('a');
+                link.href = '#';
+                link.textContent = `${site.name}で検索`;
+                link.className = 'search-link';
+                link.style.backgroundColor = site.color;
+                link.onclick = () => search(site.name);
+                searchLinksDiv.appendChild(link);
+            });
+        }
+
+        function populateProductTable() {
+            const tableBody = document.getElementById('productTable');
+            products.forEach(product => {
+                const row = tableBody.insertRow();
+                const nameCell = row.insertCell(0);
+                const janCell = row.insertCell(1);
+                nameCell.textContent = product.name;
+                janCell.innerHTML = `
+                    <span>${product.jan}</span>
+                    <button class="copy-button" onclick="copyJANCode('${product.jan}')">コピー</button>
+                `;
+            });
+        }
+
+        function search(type) {
+            const query = document.getElementById(type === 'smartphone' ? 'smartphoneInput' : 'nonSmartphoneInput').value;
+            if (!query) return;
+
+            sites.forEach(site => {
+                if (site.name === '買取商店') {
+                    searchInKaitoriShouten(query);
+                } else {
+                    const url = getSearchUrl(site.name, query, type);
+                    window.open(url, '_blank');
+                }
+            });
+        }
+
+        function getSearchUrl(siteName, query, type) {
+            switch (siteName) {
+                case '買取1丁目':
+                    return type === 'smartphone'
+                        ? `https://www.1-chome.com/keitai/search/${encodeURIComponent(query)}`
+                        : `https://www.1-chome.com/elec/search/${encodeURIComponent(query)}`;
+                case '海峡通信':
+                    return `https://www.mobile-ichiban.com/Prod/0?Search=${encodeURIComponent(query)}`;
+                case '買取ルデヤ':
+                    return `https://kaitori-rudeya.com/search/index/${encodeURIComponent(query)}/-`;
+                case '買取Wiki':
+                    return `https://gamekaitori.jp/search?type=&q=${encodeURIComponent(query)}#searchtop`;
+                case '森森買取':
+                    return `https://www.morimori-kaitori.jp/search/${encodeURIComponent(query)}?sk=${encodeURIComponent(query)}`;
+                default:
+                    return '#';
+            }
+        }
+
+        function searchInKaitoriShouten(query) {
+            console.log('Searching in 買取商店 with query:', query);
+            // 実際の実装はサイトの仕様に応じて行う必要があります
+        }
+
+        function copyJANCode(jan) {
+            navigator.clipboard.writeText(jan).then(() => {
+                const message = document.getElementById('copyMessage');
+                message.style.display = 'block';
+                setTimeout(() => {
+                    message.style.display = 'none';
+                }, 2000);
+            });
+        }
+
+        function pasteFromClipboard(inputId) {
+            navigator.clipboard.readText().then(text => {
+                document.getElementById(inputId).value = text;
+            });
+        }
+
+        window.onload = initializePage;
+    </script>
+</body>
+</html>
